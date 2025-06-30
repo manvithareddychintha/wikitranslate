@@ -221,10 +221,18 @@ def main():
     st.title("🌐 Universal Language Translator")
     st.markdown("*Translate text, images, and Wikipedia articles into 25+ languages including major Indic languages*")
     
-    # Show OCR status
+    # Show OCR status with auto-dismiss timer
     if not OCR_AVAILABLE:
-        st.error("🔧 **Setup Required**: OCR functionality is disabled. Please add the required configuration files to enable image translation.")
-        with st.expander("📋 Setup Instructions"):
+        # Create containers for timed messages
+        error_container = st.empty()
+        expander_container = st.empty()
+        
+        # Show error message
+        with error_container:
+            st.error("🔧 **Setup Required**: OCR functionality is disabled. Please add the required configuration files to enable image translation.")
+        
+        with expander_container:
+            with st.expander("📋 Setup Instructions"):
             st.markdown("""
             To enable OCR (image text extraction), you need to:
             
@@ -255,6 +263,15 @@ def main():
             
             3. **Redeploy your app** on Streamlit Cloud
             """)
+        
+        # Auto-dismiss after 30 seconds
+        if 'ocr_warning_time' not in st.session_state:
+            st.session_state.ocr_warning_time = time.time()
+        
+        # Check if 30 seconds have passed
+        if time.time() - st.session_state.ocr_warning_time > 30:
+            error_container.empty()
+            expander_container.empty()
     
     # Language selection in sidebar
     with st.sidebar:
@@ -276,7 +293,17 @@ def main():
             help="Select the language you want to translate to"
         )
         
-        st.info(f"*Translating:* {translator.languages[source_lang]} → {translator.languages[target_lang]}")
+        # Info message with auto-dismiss
+        info_container = st.empty()
+        with info_container:
+            st.info(f"*Translating:* {translator.languages[source_lang]} → {translator.languages[target_lang]}")
+        
+        # Auto-dismiss info after 30 seconds
+        if 'info_warning_time' not in st.session_state:
+            st.session_state.info_warning_time = time.time()
+        
+        if time.time() - st.session_state.info_warning_time > 30:
+            info_container.empty()
         
         # Language info
         st.markdown("### 🇮🇳 Supported Indic Languages")
