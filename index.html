@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Application</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 20px 20px 0 0;
+        }
+
+        body.dark-mode .container {
+            background: rgba(44, 62, 80, 0.95);
+            color: #ecf0f1;
+        }
+
+        body.dark-mode .container::before {
+            background: linear-gradient(90deg, #3498db, #9b59b6);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        body.dark-mode .title {
+            color: #ecf0f1;
+        }
+
+        .dark-mode-toggle {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .dark-mode-toggle:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        body.dark-mode .dark-mode-toggle {
+            background: #9b59b6;
+        }
+
+        body.dark-mode .dark-mode-toggle:hover {
+            background: #8e44ad;
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.4);
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        body.dark-mode .form-group label {
+            color: #bdc3c7;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e6ed;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2c3e50;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+
+        body.dark-mode .input-field {
+            background: rgba(52, 73, 94, 0.8);
+            border-color: #4a5f7a;
+            color: #ecf0f1;
+        }
+
+        body.dark-mode .input-field:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.2);
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-btn {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e0e6ed;
+            border-radius: 12px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            color: #2c3e50;
+        }
+
+        .dropdown-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        body.dark-mode .dropdown-btn {
+            background: rgba(52, 73, 94, 0.8);
+            border-color: #4a5f7a;
+            color: #ecf0f1;
+        }
+
+        body.dark-mode .dropdown-btn:hover {
+            border-color: #3498db;
+        }
+
+        .dropdown-arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e0e6ed;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .dropdown.open .dropdown-menu {
+            max-height: 200px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .dropdown-menu {
+            background: rgba(52, 73, 94, 0.95);
+            border-color: #4a5f7a;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #2c3e50;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        body.dark-mode .dropdown-item {
+            color: #ecf0f1;
+        }
+
+        body.dark-mode .dropdown-item:hover {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+
+        .search-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .search-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .search-btn:hover::before {
+            left: 100%;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-btn:active {
+            transform: translateY(-1px);
+        }
+
+        body.dark-mode .search-btn {
+            background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
+        }
+
+        body.dark-mode .search-btn:hover {
+            box-shadow: 0 15px 35px rgba(52, 152, 219, 0.4);
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(248, 249, 250, 0.8);
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            display: none;
+            animation: slideIn 0.5s ease;
+        }
+
+        body.dark-mode .results {
+            background: rgba(44, 62, 80, 0.6);
+            border-left-color: #3498db;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        body.dark-mode .results h3 {
+            color: #ecf0f1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">Search Application</h1>
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+                <span id="mode-text">Dark Mode</span>
+            </button>
+        </div>
+        
+        <form id="searchForm">
+            <div class="form-group">
+                <label for="keywords">Search Keywords</label>
+                <input type="text" id="keywords" class="input-field" placeholder="Enter your search keywords..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="language">Language</label>
+                <div class="dropdown" id="languageDropdown">
+                    <div class="dropdown-btn" onclick="toggleDropdown()">
+                        <span id="selectedLanguage">Select Language</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-item" onclick="selectLanguage('English')">English</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Hindi')">Spanish</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Tamil')">French</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Telugu')">German</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Kannada')">Italian</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Malayalam')">Portuguese</div>
+                        <div class="dropdown-item" onclick="selectLanguage('Marathi')">Russian</div>
+                        
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="search-btn">
+                Search
+            </button>
+        </form>
+        
+        <div id="results" class="results">
+            <h3>Search Results</h3>
+            <p id="resultText"></p>
+        </div>
+    </div>
+
+    <script>
+        let selectedLang = '';
+        
+        function toggleDropdown() {
+            const dropdown = document.getElementById('languageDropdown');
+            dropdown.classList.toggle('open');
+        }
+        
+        function selectLanguage(language) {
+            selectedLang = language;
+            document.getElementById('selectedLanguage').textContent = language;
+            document.getElementById('languageDropdown').classList.remove('open');
+        }
+        
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const modeText = document.getElementById('mode-text');
+            modeText.textContent = document.body.classList.contains('dark-mode') ? 'Light Mode' : 'Dark Mode';
+        }
+        
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const keywords = document.getElementById('keywords').value;
+            const language = selectedLang;
+            
+            if (!language) {
+                alert('Please select a language!');
+                return;
+            }
+            
+            // Simulate search functionality
+            const resultsDiv = document.getElementById('results');
+            const resultText = document.getElementById('resultText');
+            
+            resultText.innerHTML = `
+                <strong>Keywords:</strong> ${keywords}<br>
+                <strong>Language:</strong> ${language}<br>
+                <strong>Status:</strong> Search completed successfully!<br>
+                <em>This is a demo search result. In a real application, this would display actual search results from your database or API.</em>
+            `;
+            
+            resultsDiv.style.display = 'block';
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('languageDropdown');
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+        
+        // Add keyboard navigation for dropdown
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.getElementById('languageDropdown').classList.remove('open');
+            }
+        });
+    </script>
+</body>
+</html>

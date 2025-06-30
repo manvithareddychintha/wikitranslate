@@ -1,0 +1,229 @@
+import requests
+import urllib.parse
+import time
+import re
+import logging
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)
+
+class ArticleTranslator:
+    def __init__(self):
+        self.lingva_instances = [
+            "https://lingva.ml/api/v1",
+            "https://translate.igodo.eu/api/v1",
+            "https://translate.plausibility.cloud/api/v1"
+        ]
+        self.current_instance = 0
+        self.session = requests.Session()
+
+    def translate_text(self, text, source_lang='auto', target_lang='en'):
+        if not text or not text.strip():
+            return "No text to translate"
+
+        for i in range(len(self.lingva_instances)):
+            idx = (self.current_instance + i) % len(self.lingva_instances)
+            base_url = self.lingva_instances[idx]
+            try:
+                text_chunk = text.strip()[:1000]
+                encoded_text = urllib.parse.quote(text_chunk)
+                url = f"{base_url}/{source_lang}/{target_lang}/{encoded_text}"
+                logging.info(f"Trying translation instance {idx}: {base_url}")
+
+                response = self.session.get(url, timeout=15)
+                response.raise_for_status()
+
+                data = response.json()
+                translation = data.get('translation', '')
+                if translation:
+                    self.current_instance = idx
+                    return translation
+
+            except Exception as e:
+                logging.warning(f"Instance {idx} failed: {e}")
+                time.sleep(1)
+
+        return f"Translation failed - using original text: {text[:200]}..."
+
+    def translate_long_text(self, text, target_lang, chunk_size=800):
+        if not text or not text.strip():
+            return "No content to translate"
+
+        if len(text) <= chunk_size:
+            return self.translate_text(text, 'auto', target_lang)
+
+        sentences = re.split(r'(?<=[.!?]) +', text)
+        chunks = []
+        current_chunk = ""
+
+        for sentence in sentences:
+            if len(current_chunk + sentence) < chunk_size:
+                current_chunk += sentence + " "
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = sentence + " "
+
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+
+        translated_chunks = []
+        for i, chunk in enumerate(chunks):
+            if chunk.strip():
+                logging.info(f"Translating chunk {i+1}/{len(chunks)}")
+                translated_chunk = self.translate_text(chunk, 'auto', target_lang)
+                translated_chunks.append(translated_chunk)
+                time.sleep(0.5)
+
+        return ' '.join(translated_chunks)
+
+# Initialize the translator
+translator = ArticleTranslator()
+
+def search_article_mock(keyword):
+    mock_articles = {
+        'technology': "Artificial Intelligence is revolutionizing the way we work and live...",
+        'health': "Regular exercise and a balanced diet are fundamental to maintaining good health...",
+        'climate': "Climate change represents one of the most pressing challenges of our time...",
+        'education': "Education is the foundation of personal and societal development..."
+    }
+    keyword_lower = keyword.lower()
+    for key, article in mock_articles.items():
+        if key in keyword_lower or keyword_lower in key:
+            return {
+                'success': True,
+                'keyword': keyword,
+                'title': f"Article about {key.title()}",
+                'content': article,
+                'source': 'Mock Database'
+            }
+
+    return {
+        'success': True,
+        'keyword': keyword,
+        'title': f"General Article for '{keyword}'",
+        'content': f"This is a sample article about {keyword}. In a real implementation, this would be fetched from your article database.",
+        'source': 'Mock Database'
+    }
+
+@app.route('/search', methods=['POST'])
+def search_article():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword', '').strip()
+        if not keyword:
+            return jsonify({'error': 'No keyword provided'}), 400
+        article_result = search_article_mock(keyword)
+        return jsonify(article_result)
+    except Exception as e:
+        logging.error(f"Search error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/translate', methods=['POST'])
+def translate_text_endpoint():
+    try:
+        data = request.get_json()
+        text = data.get('text', '').strip()
+        source_lang = data.get('source_lang', 'auto')
+        target_lang = data.get('target_lang', 'en')
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+        if target_lang == 'en':
+            return jsonify({
+                'success': True,
+                'original_text': text,
+                'translated_text': text,
+                'source_language': source_lang,
+                'target_language': target_lang,
+                'note': 'No translation needed'
+            })
+        translated_text = translator.translate_long_text(text, target_lang)
+        return jsonify({
+            'success': True,
+            'original_text': text,
+            'translated_text': translated_text,
+            'source_language': source_lang,
+            'target_language': target_lang
+        })
+    except Exception as e:
+        logging.error(f"Translation error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/search-and-translate', methods=['POST'])
+def search_and_translate():
+    try:
+        data = request.get_json()
+        keyword = data.get('keyword', '').strip()
+        target_lang = data.get('target_language', 'en')
+        if not keyword:
+            return jsonify({'error': 'No keyword provided'}), 400
+        article_result = search_article_mock(keyword)
+        article_content = article_result.get('content', '')
+        if target_lang != 'en':
+            translated_content = translator.translate_long_text(article_content, target_lang)
+        else:
+            translated_content = article_content
+        return jsonify({
+            'success': True,
+            'keyword': keyword,
+            'target_language': target_lang,
+            'original_article': article_result,
+            'original_content': article_content,
+            'translated_content': translated_content
+        })
+    except Exception as e:
+        logging.error(f"Search and translate error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/languages', methods=['GET'])
+def get_supported_languages():
+    languages = {
+        'auto': 'Auto-detect',
+        'en': 'English',
+        'hi': 'Hindi', 'te': 'Telugu', 'ta': 'Tamil', 'kn': 'Kannada',
+        'ml': 'Malayalam', 'mr': 'Marathi', 'bn': 'Bengali', 'gu': 'Gujarati',
+        'pa': 'Punjabi', 'or': 'Odia', 'as': 'Assamese', 'ur': 'Urdu',
+        'ne': 'Nepali', 'si': 'Sinhala', 'es': 'Spanish', 'fr': 'French',
+        'de': 'German', 'it': 'Italian', 'pt': 'Portuguese', 'ru': 'Russian',
+        'ja': 'Japanese', 'ko': 'Korean', 'zh': 'Chinese', 'ar': 'Arabic'
+    }
+    return jsonify({
+        'success': True,
+        'languages': languages,
+        'indic_languages': {k: v for k, v in languages.items() if k in ['hi', 'te', 'ta', 'kn', 'ml', 'mr', 'bn', 'gu', 'pa', 'or', 'as', 'ur']}
+    })
+
+@app.route('/translate-sentence', methods=['POST'])
+def translate_sentence():
+    try:
+        data = request.get_json()
+        sentence = data.get('sentence', '').strip()
+        target_lang = data.get('language', 'hi')
+        if not sentence:
+            return jsonify({'error': 'No sentence provided'}), 400
+        translated_sentence = translator.translate_text(sentence, 'auto', target_lang)
+        return jsonify({
+            'success': True,
+            'original_sentence': sentence,
+            'translated_sentence': translated_sentence,
+            'target_language': target_lang
+        })
+    except Exception as e:
+        logging.error(f"Sentence translation error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    logging.info("Starting Translation API Server...")
+    logging.info("Endpoints:")
+    logging.info("POST /translate-sentence")
+    logging.info("POST /translate")
+    logging.info("POST /search")
+    logging.info("POST /search-and-translate")
+    logging.info("GET  /languages")
+    app.run(debug=True, host='0.0.0.0', port=5000)
