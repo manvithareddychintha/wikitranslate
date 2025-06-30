@@ -3,7 +3,14 @@ import requests
 import urllib.parse
 import time
 from PIL import Image
-import pytesseract
+
+# Handle pytesseract import with fallback
+try:
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    st.warning("⚠️ OCR functionality is not available. Please install pytesseract and tesseract-ocr system package.")
 
 # Page configuration
 st.set_page_config(
@@ -142,6 +149,9 @@ class UniversalTranslator:
 
     def extract_text_from_image(self, image):
         """Extract text from uploaded image using OCR"""
+        if not OCR_AVAILABLE:
+            return "OCR functionality is not available. Please install pytesseract."
+        
         try:
             if hasattr(image, 'read'):
                 image = Image.open(image)
@@ -211,6 +221,41 @@ def main():
     st.title("🌐 Universal Language Translator")
     st.markdown("*Translate text, images, and Wikipedia articles into 25+ languages including major Indic languages*")
     
+    # Show OCR status
+    if not OCR_AVAILABLE:
+        st.error("🔧 **Setup Required**: OCR functionality is disabled. Please add the required configuration files to enable image translation.")
+        with st.expander("📋 Setup Instructions"):
+            st.markdown("""
+            To enable OCR (image text extraction), you need to:
+            
+            1. **Create `requirements.txt`** in your project root:
+            ```
+            streamlit>=1.28.0
+            requests>=2.25.1
+            Pillow>=8.3.2
+            pytesseract>=0.3.8
+            urllib3>=1.26.0
+            ```
+            
+            2. **Create `packages.txt`** in your project root:
+            ```
+            tesseract-ocr
+            tesseract-ocr-eng
+            tesseract-ocr-hin
+            tesseract-ocr-tam
+            tesseract-ocr-tel
+            tesseract-ocr-kan
+            tesseract-ocr-mal
+            tesseract-ocr-mar
+            tesseract-ocr-ben
+            tesseract-ocr-guj
+            tesseract-ocr-pan
+            tesseract-ocr-ori
+            ```
+            
+            3. **Redeploy your app** on Streamlit Cloud
+            """)
+    
     # Language selection in sidebar
     with st.sidebar:
         st.header("🎯 Translation Settings")
@@ -239,13 +284,20 @@ def main():
         for lang in indic_langs:
             st.markdown(f"• {lang}")
 
-    # Main content area
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📝 Text Translation", 
-        "🖼 Image Translation", 
-        "📚 Wikipedia Translation", 
-        "⚡ Quick Translate"
-    ])
+    # Main content area - only show available tabs
+    if OCR_AVAILABLE:
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📝 Text Translation", 
+            "🖼 Image Translation", 
+            "📚 Wikipedia Translation", 
+            "⚡ Quick Translate"
+        ])
+    else:
+        tab1, tab3, tab4 = st.tabs([
+            "📝 Text Translation", 
+            "📚 Wikipedia Translation", 
+            "⚡ Quick Translate"
+        ])
 
     # Tab 1: Text Translation
     with tab1:
@@ -281,57 +333,58 @@ def main():
             if st.button("🗑 Clear", use_container_width=True):
                 st.rerun()
 
-    # Tab 2: Image Translation
-    with tab2:
-        st.header("🖼 Image Text Translation")
-        st.markdown("Upload an image with text to extract and translate it")
-        
-        uploaded_file = st.file_uploader(
-            "Choose an image file",
-            type=['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'],
-            help="Upload images containing text (documents, signs, screenshots, etc.)"
-        )
-        
-        if uploaded_file is not None:
-            # Display image
-            col1, col2 = st.columns(2)
+    # Tab 2: Image Translation (only if OCR is available)
+    if OCR_AVAILABLE:
+        with tab2:
+            st.header("🖼 Image Text Translation")
+            st.markdown("Upload an image with text to extract and translate it")
             
-            with col1:
-                st.markdown("#### 🖼 Uploaded Image")
-                st.image(uploaded_file, caption="Your uploaded image", use_column_width=True)
+            uploaded_file = st.file_uploader(
+                "Choose an image file",
+                type=['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'],
+                help="Upload images containing text (documents, signs, screenshots, etc.)"
+            )
             
-            with col2:
-                st.markdown("#### 🔧 Actions")
+            if uploaded_file is not None:
+                # Display image
+                col1, col2 = st.columns(2)
                 
-                if st.button("🔍 Extract & Translate", type="primary", use_container_width=True):
-                    with st.spinner("🔍 Extracting text from image..."):
-                        extracted_text = translator.extract_text_from_image(uploaded_file)
-                    
-                    if extracted_text:
-                        st.markdown("#### 📝 Extracted Text")
-                        st.text_area("", value=extracted_text, height=150, disabled=True)
-                        
-                        # Always translate unless target is English and text appears to be English
-                        with st.spinner(f"🔄 Translating to {translator.languages[target_lang]}..."):
-                            translation = translator.translate_long_content(extracted_text, target_lang, source_lang)
-                        
-                        st.markdown("#### 🌐 Translation")
-                        st.success(translation)
-                        
-                        # Copy format
-                        st.code(translation, language=None)
-                    else:
-                        st.error("❌ No readable text found in the image")
+                with col1:
+                    st.markdown("#### 🖼 Uploaded Image")
+                    st.image(uploaded_file, caption="Your uploaded image", use_column_width=True)
                 
-                if st.button("📝 Extract Text Only", use_container_width=True):
-                    with st.spinner("🔍 Extracting text..."):
-                        extracted_text = translator.extract_text_from_image(uploaded_file)
+                with col2:
+                    st.markdown("#### 🔧 Actions")
                     
-                    if extracted_text:
-                        st.markdown("#### 📝 Extracted Text")
-                        st.text_area("", value=extracted_text, height=200, disabled=True)
-                    else:
-                        st.error("❌ No readable text found in the image")
+                    if st.button("🔍 Extract & Translate", type="primary", use_container_width=True):
+                        with st.spinner("🔍 Extracting text from image..."):
+                            extracted_text = translator.extract_text_from_image(uploaded_file)
+                        
+                        if extracted_text:
+                            st.markdown("#### 📝 Extracted Text")
+                            st.text_area("", value=extracted_text, height=150, disabled=True)
+                            
+                            # Always translate unless target is English and text appears to be English
+                            with st.spinner(f"🔄 Translating to {translator.languages[target_lang]}..."):
+                                translation = translator.translate_long_content(extracted_text, target_lang, source_lang)
+                            
+                            st.markdown("#### 🌐 Translation")
+                            st.success(translation)
+                            
+                            # Copy format
+                            st.code(translation, language=None)
+                        else:
+                            st.error("❌ No readable text found in the image")
+                    
+                    if st.button("📝 Extract Text Only", use_container_width=True):
+                        with st.spinner("🔍 Extracting text..."):
+                            extracted_text = translator.extract_text_from_image(uploaded_file)
+                        
+                        if extracted_text:
+                            st.markdown("#### 📝 Extracted Text")
+                            st.text_area("", value=extracted_text, height=200, disabled=True)
+                        else:
+                            st.error("❌ No readable text found in the image")
 
     # Tab 3: Wikipedia Translation
     with tab3:
@@ -425,11 +478,11 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown(
-        """
+        f"""
         <div style='text-align: center; color: #666;'>
             <p>🌐 <strong>Universal Language Translator</strong> | 
             📚 Wikipedia Integration | 
-            🖼 Image OCR | 
+            {'🖼 Image OCR | ' if OCR_AVAILABLE else ''}
             25+ Languages Supported</p>
             <p><em>Bridging language barriers with AI-powered translation</em></p>
         </div>
