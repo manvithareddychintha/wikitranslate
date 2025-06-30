@@ -221,18 +221,10 @@ def main():
     st.title("🌐 Universal Language Translator")
     st.markdown("*Translate text, images, and Wikipedia articles into 25+ languages including major Indic languages*")
     
-    # Show OCR status with auto-dismiss timer
+    # Show OCR status
     if not OCR_AVAILABLE:
-        # Create containers for timed messages
-        error_container = st.empty()
-        expander_container = st.empty()
-        
-        # Show error message
-        with error_container:
-            st.error("🔧 **Setup Required**: OCR functionality is disabled. Please add the required configuration files to enable image translation.")
-        
-        with expander_container:
-            with st.expander("📋 Setup Instructions"):
+        st.error("🔧 **Setup Required**: OCR functionality is disabled. Please add the required configuration files to enable image translation.")
+        with st.expander("📋 Setup Instructions"):
             st.markdown("""
             To enable OCR (image text extraction), you need to:
             
@@ -263,15 +255,6 @@ def main():
             
             3. **Redeploy your app** on Streamlit Cloud
             """)
-        
-        # Auto-dismiss after 30 seconds
-        if 'ocr_warning_time' not in st.session_state:
-            st.session_state.ocr_warning_time = time.time()
-        
-        # Check if 30 seconds have passed
-        if time.time() - st.session_state.ocr_warning_time > 30:
-            error_container.empty()
-            expander_container.empty()
     
     # Language selection in sidebar
     with st.sidebar:
@@ -293,17 +276,7 @@ def main():
             help="Select the language you want to translate to"
         )
         
-        # Info message with auto-dismiss
-        info_container = st.empty()
-        with info_container:
-            st.info(f"*Translating:* {translator.languages[source_lang]} → {translator.languages[target_lang]}")
-        
-        # Auto-dismiss info after 30 seconds
-        if 'info_warning_time' not in st.session_state:
-            st.session_state.info_warning_time = time.time()
-        
-        if time.time() - st.session_state.info_warning_time > 30:
-            info_container.empty()
+        st.info(f"*Translating:* {translator.languages[source_lang]} → {translator.languages[target_lang]}")
         
         # Language info
         st.markdown("### 🇮🇳 Supported Indic Languages")
@@ -504,15 +477,18 @@ def main():
 
     # Footer
     st.markdown("---")
-    
-    # Clean footer without HTML tags
-    footer_text = "🌐 Universal Language Translator | 📚 Wikipedia Integration"
-    if OCR_AVAILABLE:
-        footer_text += " | 🖼 Image OCR"
-    footer_text += " | 25+ Languages Supported"
-    
-    st.markdown(f"**{footer_text}**")
-    st.markdown("*Bridging language barriers with AI-powered translation*")
+    st.markdown(
+        f"""
+        <div style='text-align: center; color: #666;'>
+            <p>🌐 <strong>Universal Language Translator</strong> | 
+            📚 Wikipedia Integration | 
+            {'🖼 Image OCR | ' if OCR_AVAILABLE else ''}
+            25+ Languages Supported</p>
+            <p><em>Bridging language barriers with AI-powered translation</em></p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
