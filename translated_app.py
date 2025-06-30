@@ -10,7 +10,7 @@ try:
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
-    st.warning("⚠️ OCR functionality is not available. Please install pytesseract and tesseract-ocr system package.")
+    st.warning("⚠️ OCR functionality is currently unavailable.")
 
 # Page configuration
 st.set_page_config(
@@ -477,18 +477,15 @@ def main():
 
     # Footer
     st.markdown("---")
-    st.markdown(
-        f"""
-        <div style='text-align: center; color: #666;'>
-            <p>🌐 <strong>Universal Language Translator</strong> | 
-            📚 Wikipedia Integration | 
-            {'🖼 Image OCR | ' if OCR_AVAILABLE else ''}
-            25+ Languages Supported</p>
-            <p><em>Bridging language barriers with AI-powered translation</em></p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    
+    # Clean footer without HTML tags
+    footer_text = "🌐 Universal Language Translator | 📚 Wikipedia Integration"
+    if OCR_AVAILABLE:
+        footer_text += " | 🖼 Image OCR"
+    footer_text += " | 25+ Languages Supported"
+    
+    st.markdown(f"**{footer_text}**")
+    st.markdown("*Bridging language barriers with AI-powered translation*")
 
 if __name__ == "__main__":
     main()
